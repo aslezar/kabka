@@ -1,29 +1,32 @@
+// Root project configuration for multi-module Kabka project
 plugins {
 	java
-	id("org.springframework.boot") version "4.0.1"
-	id("io.spring.dependency-management") version "1.1.7"
+	id("org.springframework.boot") version "4.0.1" apply false
+	id("io.spring.dependency-management") version "1.1.7" apply false
 }
 
 group = "dev.kabka"
 version = "0.0.1-SNAPSHOT"
-description = "Kafka ka bhai"
+description = "Kafka ka bhai - A distributed messaging system"
 
-java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(25)
+// Common configuration for all subprojects
+subprojects {
+	apply(plugin = "java")
+	
+	group = "dev.kabka"
+	version = rootProject.version
+	
+	java {
+		toolchain {
+			languageVersion = JavaLanguageVersion.of(25)
+		}
 	}
-}
-
-repositories {
-	mavenCentral()
-}
-
-dependencies {
-	implementation("org.springframework.boot:spring-boot-starter-webmvc")
-	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-tasks.withType<Test> {
-	useJUnitPlatform()
+	
+	repositories {
+		mavenCentral()
+	}
+	
+	tasks.withType<Test> {
+		useJUnitPlatform()
+	}
 }

@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: Kabka API
+
+server:
+  port: 8080
+
+logging:
+  level:
+    dev.kabka: DEBUG
