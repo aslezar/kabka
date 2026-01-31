@@ -1,9 +1,12 @@
 package dev.kabka.api.controller;
 
-import dev.kabka.core.KabkaEngine;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.Map;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import dev.kabka.core.KabkaEngine;
 
 /**
  * REST API for managing the Kabka messaging engine
@@ -23,19 +26,7 @@ public class AdminController {
         return Map.of(
             "service", "Kabka Messaging System",
             "status", "UP",
-            "version", "1.0.0"
+            "version", "1.0.2"
         );
-    }
-    
-    @PostMapping("/start")
-    public Map<String, String> startEngine() {
-        engine.start();
-        return Map.of("message", "Engine started");
-    }
-    
-    @PostMapping("/stop")
-    public Map<String, String> stopEngine() {
-        engine.stop();
-        return Map.of("message", "Engine stopped");
     }
 }

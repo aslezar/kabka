@@ -8,3 +8,38 @@ server:
 logging:
   level:
     dev.kabka: DEBUG
+
+kafka:
+  topic:
+    - name: example-topic
+      partitions: 3
+      config:
+        retention.ms: 604800000
+    - name: another-topic
+      partitions: 5
+      config:
+        retention.ms: 2592000000
+    - name: logs-topic
+      partitions: 4
+      config:
+        retention.ms: 86400000
+
+  consumer-groups:
+    - name: consumer-group-1
+      consumers:
+      - name: consumer-1
+        topics:
+          - name: example-topic
+            partitions: [0, 1]
+          - name: logs-topic
+            partitions: [0, 1, 2]
+          - name: another-topic
+            partitions: [0, 1]
+      - name: consumer-2
+        topics:
+          - name: example-topic
+            partitions: [2]
+          - name: another-topic
+            partitions: [2, 3, 4]
+          - name: logs-topic
+            partitions: [3]
