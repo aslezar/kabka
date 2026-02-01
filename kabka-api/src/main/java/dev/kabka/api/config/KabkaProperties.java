@@ -23,4 +23,11 @@ public class KabkaProperties {
         return consumerGroups;
     }
 
+    public void setTopic(List<TopicConfig> topic) {
+        this.topic = topic;
+    }
+
+    public void setConsumerGroups(List<ConsumerGroupConfig> consumerGroups) {
+        this.consumerGroups = consumerGroups;
+    }
 }

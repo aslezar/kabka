@@ -1,26 +1,26 @@
 package dev.kabka.core.consumergroup;
-import dev.kabka.core.message.Message;
-import dev.kabka.core.partition.Partition;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import dev.kabka.core.config.ConsumerConfig;
+import dev.kabka.core.config.ConsumerGroupConfig;
+import dev.kabka.core.topic.Topic;
 
 public class ConsumerGroup {
     private final String name;
-    private final Partition[] partitions;
+    private final List<Consumer> consumers;
+    // private final Partition[] partitions;
     
-    public ConsumerGroup(String name, int noOfPartitions) {
-        this.name = name;
-        this.partitions = new Partition[noOfPartitions];
+    public ConsumerGroup(ConsumerGroupConfig consumerGroupConfig, List<Topic> topics) {
+        this.name = consumerGroupConfig.getName();
+        this.consumers = new ArrayList<>();
+        for (ConsumerConfig consumerConfig: consumerGroupConfig.getConsumers()) {
+            this.consumers.add(new Consumer(consumerConfig, topics));
+        }
     }
     
     public String getName() {
         return name;
-    }
-
-    public boolean push(Message message, int partitionNo) {
-        // no-op for now
-        return false;
-    }
-
-    public Message[] pull(int partitionNo, int seqNo, int batchSize) {
-        return new Message[batchSize];
     }
 }

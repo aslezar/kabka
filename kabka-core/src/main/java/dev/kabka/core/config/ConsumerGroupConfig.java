@@ -7,6 +7,10 @@ public class ConsumerGroupConfig {
     private String name;
     private List<ConsumerConfig> consumers;
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public String getName() {
         return name;
     }
