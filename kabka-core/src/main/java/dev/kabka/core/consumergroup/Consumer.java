@@ -5,6 +5,7 @@ import dev.kabka.core.config.ConsumerConfig.ConsumerTopicConfig;
 import dev.kabka.core.partition.Partition;
 import dev.kabka.core.topic.Topic;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Consumer {
@@ -33,5 +34,9 @@ public class Consumer {
 
 	public String getName() {
 		return name;
+	}
+
+	public List<Partition> getPartitions() {
+		return Collections.unmodifiableList(partitions);
 	}
 }

@@ -9,6 +9,12 @@ logging:
   level:
     dev.kabka: DEBUG
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+
 kafka:
   topic:
     - name: example-topic

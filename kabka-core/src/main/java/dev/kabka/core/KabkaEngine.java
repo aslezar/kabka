@@ -3,9 +3,14 @@ package dev.kabka.core;
 import dev.kabka.core.config.ConsumerGroupConfig;
 import dev.kabka.core.config.TopicConfig;
 import dev.kabka.core.consumergroup.ConsumerGroup;
+import dev.kabka.core.exception.GroupNotAssignedException;
+import dev.kabka.core.exception.TopicNotFoundException;
 import dev.kabka.core.message.Message;
+import dev.kabka.core.partition.Partition;
+import dev.kabka.core.topic.PushResult;
 import dev.kabka.core.topic.Topic;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.OptionalInt;
 import org.slf4j.Logger;
@@ -22,12 +27,8 @@ public class KabkaEngine {
 	private final List<ConsumerGroup> consumerGroups;
 
 	public KabkaEngine(List<ConsumerGroupConfig> consumerGroupConfigs, List<TopicConfig> topicConfigs) {
-
-		// Constructor logic if needed
 		this.topics = new ArrayList<>();
 		this.consumerGroups = new ArrayList<>();
-
-		logger.info(consumerGroupConfigs.toString());
 
 		for (TopicConfig topicConfig : topicConfigs) {
 			this.topics.add(new Topic(topicConfig.getName(), topicConfig.getPartitions()));
@@ -38,37 +39,68 @@ public class KabkaEngine {
 		}
 	}
 
-	public void pushToTopic(String topicName, byte[] message, OptionalInt partitionNo) throws RuntimeException {
-		// Implementation for pushing message to topic
+	public PushResult pushToTopic(String topicName, byte[] message, OptionalInt partitionNo) {
 		Message msg = new Message(message);
-
-		for (Topic topic : topics) {
-			if (topic.getName().equals(topicName)) {
-				boolean success = topic.push(msg, partitionNo);
-				if (success) {
-					logger.info("Message pushed to topic: " + topicName);
-				} else {
-					logger.error("Failed to push message to topic: " + topicName);
-					throw new RuntimeException("Failed to push message to topic: " + topicName);
-				}
-				return;
-			}
-		}
-
-		logger.error("Topic not found: " + topicName);
-		throw new RuntimeException("Topic not found: " + topicName);
+		PushResult result = findTopicOrThrow(topicName).push(msg, partitionNo);
+		logger.info("Message pushed to topic: " + topicName);
+		return result;
 	}
 
-	public Message[] pullFromTopic(String topicName, int partitionNo, long seqNo, int batchSize)
-			throws RuntimeException {
-		// Implementation for pulling messages from topic
+	public Message[] pullFromTopic(String topicName, int partitionNo, long seqNo, int batchSize) {
+		return findTopicOrThrow(topicName).pull(partitionNo, seqNo, batchSize);
+	}
+
+	public boolean isPartitionAssignedToGroup(String groupName, String topicName, int partitionNo) {
+		Partition partition = findTopicOrThrow(topicName).getPartition(partitionNo);
+		ConsumerGroup group = findGroupByName(groupName);
+		return group != null && group.hasPartition(partition);
+	}
+
+	public Message[] pollFromGroup(String topicName, int partitionNo, String groupName, int batchSize) {
+		return resolveAssignedPartition(topicName, partitionNo, groupName).poll(groupName, batchSize);
+	}
+
+	public void commitOffset(String topicName, int partitionNo, String groupName, long offset) {
+		resolveAssignedPartition(topicName, partitionNo, groupName).commitOffset(groupName, offset);
+	}
+
+	public long getCommittedOffset(String topicName, int partitionNo, String groupName) {
+		return resolveAssignedPartition(topicName, partitionNo, groupName).getCommittedOffset(groupName);
+	}
+
+	public List<Topic> getTopics() {
+		return Collections.unmodifiableList(topics);
+	}
+
+	public List<ConsumerGroup> getConsumerGroups() {
+		return Collections.unmodifiableList(consumerGroups);
+	}
+
+	private Partition resolveAssignedPartition(String topicName, int partitionNo, String groupName) {
+		Partition partition = findTopicOrThrow(topicName).getPartition(partitionNo);
+		ConsumerGroup group = findGroupByName(groupName);
+		if (group == null || !group.hasPartition(partition)) {
+			throw new GroupNotAssignedException(
+					"Group " + groupName + " is not assigned to " + topicName + "/" + partitionNo);
+		}
+		return partition;
+	}
+
+	private Topic findTopicOrThrow(String topicName) {
 		for (Topic topic : topics) {
 			if (topic.getName().equals(topicName)) {
-				return topic.pull(partitionNo, seqNo, batchSize);
+				return topic;
 			}
 		}
+		throw new TopicNotFoundException("Topic not found: " + topicName);
+	}
 
-		logger.error("Topic not found: " + topicName);
-		throw new RuntimeException("Topic not found: " + topicName);
+	private ConsumerGroup findGroupByName(String groupName) {
+		for (ConsumerGroup group : consumerGroups) {
+			if (group.getName().equals(groupName)) {
+				return group;
+			}
+		}
+		return null;
 	}
 }

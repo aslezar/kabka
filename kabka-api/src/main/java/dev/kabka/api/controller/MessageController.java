@@ -1,7 +1,9 @@
 package dev.kabka.api.controller;
 
-import dev.kabka.core.KabkaEngine;
+import dev.kabka.api.metrics.MeteredKabkaEngine;
 import dev.kabka.core.message.Message;
+import dev.kabka.core.topic.PushResult;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
@@ -18,10 +20,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/messages")
 public class MessageController {
 
-	private final KabkaEngine engine;
+	private final MeteredKabkaEngine engine;
 
-	public MessageController(KabkaEngine engine) {
+	public MessageController(MeteredKabkaEngine engine) {
 		this.engine = engine;
+	}
+
+	private record MessageView(long offset, Instant timestamp, String payload) {
 	}
 
 	@GetMapping("/pull")
@@ -29,18 +34,41 @@ public class MessageController {
 			@RequestParam(defaultValue = "10") int batchSize, @RequestParam(defaultValue = "0") long offset) {
 
 		Message[] messages = engine.pullFromTopic(topic, partition, offset, batchSize);
-
-		List<String> payloads = java.util.Arrays.stream(messages).map(m -> m.getPayloadString()).toList();
+		List<MessageView> payloads = java.util.Arrays.stream(messages)
+				.map(m -> new MessageView(m.getOffset(), m.getTimestamp(), m.getPayloadString())).toList();
 
 		return Map.of("topic", topic, "partition", partition, "messages", payloads);
 	}
 
 	@PostMapping("/push")
-	public Map<String, Object> produce(@RequestParam String topic, @RequestParam() Integer partition,
+	public Map<String, Object> produce(@RequestParam String topic, @RequestParam(required = false) Integer partition,
 			@RequestParam String message) {
 
-		engine.pushToTopic(topic, message.getBytes(), OptionalInt.of(partition));
+		OptionalInt partitionNo = partition == null ? OptionalInt.empty() : OptionalInt.of(partition);
+		PushResult result = engine.pushToTopic(topic, message.getBytes(), partitionNo);
 
-		return Map.of("status", "queued");
+		return Map.of("status", "queued", "topic", topic, "partition", result.partitionNo(), "offset", result.offset());
+	}
+
+	@GetMapping("/poll")
+	public Map<String, Object> poll(@RequestParam String topic, @RequestParam int partition, @RequestParam String group,
+			@RequestParam(defaultValue = "10") int batchSize) {
+
+		long committedOffset = engine.getCommittedOffset(topic, partition, group);
+		Message[] messages = engine.pollFromGroup(topic, partition, group, batchSize);
+		List<MessageView> payloads = java.util.Arrays.stream(messages)
+				.map(m -> new MessageView(m.getOffset(), m.getTimestamp(), m.getPayloadString())).toList();
+
+		return Map.of("topic", topic, "partition", partition, "group", group, "committedOffset", committedOffset,
+				"nextOffset", committedOffset + messages.length, "messages", payloads);
+	}
+
+	@PostMapping("/commit")
+	public Map<String, Object> commit(@RequestParam String topic, @RequestParam int partition,
+			@RequestParam String group, @RequestParam long offset) {
+
+		engine.commitOffset(topic, partition, group, offset);
+
+		return Map.of("status", "committed", "topic", topic, "partition", partition, "group", group, "offset", offset);
 	}
 }

@@ -1,15 +1,15 @@
 package dev.kabka.core.topic;
+
+import dev.kabka.core.exception.InvalidPartitionException;
 import dev.kabka.core.message.Message;
 import dev.kabka.core.partition.Partition;
 import java.util.OptionalInt;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Topic {
 	private final String name;
 	private final Partition[] partitions;
-
-	private static final Logger logger = LoggerFactory.getLogger(Topic.class);
+	private final AtomicInteger roundRobin = new AtomicInteger(0);
 
 	public Topic(String name, int noOfPartitions) {
 		this.name = name;
@@ -27,25 +27,24 @@ public class Topic {
 		return partitions;
 	}
 
-	public boolean push(Message message, OptionalInt partitionNo) {
-		// TODO: Select optimal parition if partition is not provided
-		int partNo = partitionNo.orElse(0);
-		if (!isValidPartitionNumber(partNo)) {
-			logger.error("Invalid partition number " + partNo + ", topic has " + this.partitions.length + " partition");
-			return false;
+	public Partition getPartition(int partitionNo) {
+		if (!isValidPartitionNumber(partitionNo)) {
+			throw new InvalidPartitionException("Invalid partition number " + partitionNo + ", topic has "
+					+ this.partitions.length + " partitions");
 		}
-		return partitions[partNo].push(message);
+		return partitions[partitionNo];
+	}
+
+	public PushResult push(Message message, OptionalInt partitionNo) {
+		int partNo = partitionNo.orElseGet(() -> Math.floorMod(roundRobin.getAndIncrement(), partitions.length));
+		long offset = getPartition(partNo).push(message);
+		return new PushResult(partNo, offset);
 	}
 
 	public Message[] pull(int partitionNo, long seqNo, int batchSize) {
-		if (!isValidPartitionNumber(partitionNo)) {
-			logger.error(
-					"Invalid partition number " + partitionNo + ", topic has " + this.partitions.length + " partition");
-			throw new IllegalArgumentException(
-					"Invalid partition number " + partitionNo + ", topic has " + this.partitions.length + " partition");
-		}
-		return partitions[partitionNo].pull(seqNo, batchSize);
+		return getPartition(partitionNo).pull(seqNo, batchSize);
 	}
+
 	public boolean isValidPartitionNumber(int partitionNumber) {
 		return partitionNumber >= 0 && partitionNumber < partitions.length;
 	}

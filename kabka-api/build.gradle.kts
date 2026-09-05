@@ -10,9 +10,14 @@ dependencies {
 	
 	// Spring Boot for REST API
 	implementation("org.springframework.boot:spring-boot-starter-web")
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	
 	// Testing
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	testImplementation("org.springframework.boot:spring-boot-resttestclient")
+	testImplementation("org.springframework.boot:spring-boot-restclient")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

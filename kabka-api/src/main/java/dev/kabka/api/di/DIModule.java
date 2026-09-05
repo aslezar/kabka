@@ -1,7 +1,9 @@
 package dev.kabka.api.di;
 
 import dev.kabka.api.config.KabkaProperties;
+import dev.kabka.api.metrics.MeteredKabkaEngine;
 import dev.kabka.core.KabkaEngine;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,8 +17,11 @@ public class DIModule {
 
 	@Bean
 	public KabkaEngine kabkaEngine() {
-		KabkaEngine engine = new KabkaEngine(kabkaProperties.getConsumerGroups(), kabkaProperties.getTopic());
-		// TODO: configure `engine` using `kafkaProperties` (topics, consumer groups)
-		return engine;
+		return new KabkaEngine(kabkaProperties.getConsumerGroups(), kabkaProperties.getTopic());
+	}
+
+	@Bean
+	public MeteredKabkaEngine meteredKabkaEngine(KabkaEngine kabkaEngine, MeterRegistry registry) {
+		return new MeteredKabkaEngine(kabkaEngine, registry);
 	}
 }
